@@ -5,8 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -78,6 +81,20 @@ type OpenAIResponsePayload struct {
 	} `json:"error,omitempty"`
 }
 
+// normalizeURL memastikan URL endpoint AI Provider memiliki suffix /chat/completions
+func normalizeURL(urlStr string) string {
+	urlStr = strings.TrimSpace(urlStr)
+	if urlStr == "" {
+		return "https://api.openai.com/v1/chat/completions"
+	}
+	// Jika belum berakhiran /chat/completions
+	if !strings.HasSuffix(urlStr, "/chat/completions") {
+		urlStr = strings.TrimRight(urlStr, "/")
+		urlStr += "/chat/completions"
+	}
+	return urlStr
+}
+
 // GenerateCompletion mengirimkan request prompt ke AI Provider dengan mekanisme Multi-Provider Circuit Breaker
 func (c *AIClient) GenerateCompletion(ctx context.Context, systemPrompt, userPrompt string) (string, error) {
 	if c.apiKey == "" {
@@ -90,7 +107,7 @@ func (c *AIClient) GenerateCompletion(ctx context.Context, systemPrompt, userPro
 
 	// Coba provider utama terlebih dahulu
 	res, err := c.doRequest(ctx, c.baseURL, c.apiKey, c.model, systemPrompt, userPrompt)
-	if err == nil && res != "" {
+	if err == nil && strings.TrimSpace(res) != "" {
 		return res, nil
 	}
 
@@ -104,7 +121,7 @@ func (c *AIClient) GenerateCompletion(ctx context.Context, systemPrompt, userPro
 			secondaryModel = c.model
 		}
 		secRes, secErr := c.doRequest(ctx, secondaryURL, secondaryKey, secondaryModel, systemPrompt, userPrompt)
-		if secErr == nil && secRes != "" {
+		if secErr == nil && strings.TrimSpace(secRes) != "" {
 			return secRes, nil
 		}
 	}
@@ -114,6 +131,8 @@ func (c *AIClient) GenerateCompletion(ctx context.Context, systemPrompt, userPro
 
 // doRequest mengeksekusi HTTP POST request ke AI Provider endpoint
 func (c *AIClient) doRequest(ctx context.Context, apiURL, apiKey, modelName, systemPrompt, userPrompt string) (string, error) {
+	apiURL = normalizeURL(apiURL)
+
 	payload := OpenAIRequestPayload{
 		Model: modelName,
 		Messages: []OpenAIMessage{
@@ -143,22 +162,64 @@ func (c *AIClient) doRequest(ctx context.Context, apiURL, apiKey, modelName, sys
 	}
 	defer resp.Body.Close()
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("gagal membaca body respon AI Provider (%s): %w", apiURL, err)
+	}
+
+	respStr := strings.TrimSpace(string(respBody))
+
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("AI Provider (%s) merespons status HTTP %d", apiURL, resp.StatusCode)
+		return "", fmt.Errorf("AI Provider (%s) merespons status HTTP %d, raw response: %s", apiURL, resp.StatusCode, respStr)
 	}
 
 	var apiResp OpenAIResponsePayload
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return "", fmt.Errorf("gagal decode respon AI Provider: %w", err)
+	contentStr := ""
+
+	if err := json.Unmarshal(respBody, &apiResp); err == nil && len(apiResp.Choices) > 0 {
+		if apiResp.Error != nil && apiResp.Error.Message != "" {
+			return "", fmt.Errorf("AI Provider Error: %s", apiResp.Error.Message)
+		}
+		contentStr = apiResp.Choices[0].Message.Content
+	} else {
+		// Fallback: Periksa apakah respon berformat SSE Stream (data: ...)
+		if strings.Contains(respStr, "data:") {
+			lines := strings.Split(respStr, "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if strings.HasPrefix(line, "data:") {
+					jsonStr := strings.TrimSpace(line[5:])
+					if jsonStr == "[DONE]" || jsonStr == "" {
+						continue
+					}
+					var chunk struct {
+						Choices []struct {
+							Delta struct {
+								Content string `json:"content"`
+							} `json:"delta"`
+						} `json:"choices"`
+					}
+					if err := json.Unmarshal([]byte(jsonStr), &chunk); err == nil {
+						if len(chunk.Choices) > 0 {
+							contentStr += chunk.Choices[0].Delta.Content
+						}
+					}
+				}
+			}
+		}
+
+		if contentStr == "" {
+			return "", fmt.Errorf("gagal decode respon AI Provider: %v, raw response: %s", err, respStr)
+		}
 	}
 
-	if apiResp.Error != nil && apiResp.Error.Message != "" {
-		return "", fmt.Errorf("AI Provider Error: %s", apiResp.Error.Message)
+	// Sanitasi opsional jika konten dibungkus markdown codeblock ```json ... ```
+	jsonRegex := regexp.MustCompile("(?s)```(?:json)?\\s*(.*?)\\s*```")
+	matches := jsonRegex.FindStringSubmatch(contentStr)
+	if len(matches) > 1 {
+		contentStr = strings.TrimSpace(matches[1])
 	}
 
-	if len(apiResp.Choices) == 0 {
-		return "", fmt.Errorf("AI Provider tidak mengembalikan respons teks")
-	}
-
-	return apiResp.Choices[0].Message.Content, nil
+	return contentStr, nil
 }
+
