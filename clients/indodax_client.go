@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -150,18 +149,7 @@ func parseOrderbookEntries(rawEntries [][]interface{}) []models.OrderbookEntry {
 	return entries
 }
 
-// parseToFloat pembantu konversi tipe data dinamis ke float64
-func parseToFloat(val interface{}) float64 {
-	switch v := val.(type) {
-	case float64:
-		return v
-	case string:
-		f, _ := strconv.ParseFloat(v, 64)
-		return f
-	default:
-		return 0.0
-	}
-}
+
 
 // getFallbackTicker menyediakan data simulasi cadangan untuk Indodax
 func (c *IndodaxClient) getFallbackTicker(pair string) *models.IndodaxTickerResponse {
