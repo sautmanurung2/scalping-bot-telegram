@@ -10,6 +10,7 @@ services:
       - AI_PROVIDER_URL=${AI_PROVIDER_URL:-https://api.openai.com/v1/chat/completions}
       - AI_API_KEY=${AI_API_KEY}
       - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
+      - DB_PATH=${DB_PATH:-/app/data/trading_bot.db}
     volumes:
-      # Persistent volume untuk database SQLite agar data sinyal & cache tidak hilang saat container restart
-      - ./trading_bot.db:/app/trading_bot.db
+      # Persistent volume folder data untuk SQLite agar data sinyal & cache tidak hilang saat container restart
+      - ./data:/app/data
