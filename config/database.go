@@ -3,6 +3,7 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
@@ -16,7 +17,18 @@ var DB *gorm.DB
 
 // InitDatabase menginisialisasi koneksi SQLite dan menjalankan migrasi skema tabel
 func InitDatabase() *gorm.DB {
-	dbPath := "trading_bot.db"
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		dbPath = "trading_bot.db"
+	}
+
+	// Pastikan direktori induk tempat file database berada tersedia
+	dir := filepath.Dir(dbPath)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			log.Fatalf("Gagal membuat direktori database %s: %v", dir, err)
+		}
+	}
 
 	// Konfigurasi koneksi GORM dengan SQLite
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
