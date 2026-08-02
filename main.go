@@ -7,12 +7,19 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/joho/godotenv"
+
 	"trading-analysis-bot/clients"
 	"trading-analysis-bot/config"
 	"trading-analysis-bot/services"
 )
 
 func main() {
+	// Otomatis memuat variabel lingkungan dari file .env jika tersedia
+	if err := godotenv.Load(); err != nil {
+		log.Println("ℹ️ File .env tidak ditemukan atau menggunakan environment bawaan sistem.")
+	}
+
 	log.Println("🚀 Memulai Financial Market Analysis - AI Daily Scalping Telegram Bot...")
 
 	// Context global dengan penanganan Signal Interruption (Ctrl+C / SIGTERM)
