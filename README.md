@@ -103,6 +103,7 @@ docker-compose up -d --build
 | Perintah | Deskripsi & Contoh Penggunaan |
 | :--- | :--- |
 | `/start` | **Mengaktifkan Auto-Pilot Daily Scalping Mode**. Memicu pemindaian dinamis instan untuk seluruh saham Indonesia (IDX) dan seluruh koin kripto Indodax ber-volume tinggi/potensial scalping harian, serta mendaftarkan scheduler otomatis. |
+| `/stop` | **Menghentikan Auto-Pilot Daily Scalping Mode**. Menonaktifkan pendaftaran pengiriman notifikasi sinyal harian otomatis untuk pengguna. |
 | `/scalp <market> <symbol>` | Analisis sinyal teknikal harian manual.<br>*Contoh:* `/scalp idx BBCA` atau `/scalp indodax btc_idr` |
 | `/ai <market> <symbol>` | Meminta **Kartu Saran Scalping AI Mentor**.<br>*Contoh:* `/ai BBCA` atau `/ai indodax eth_idr` |
 | `/ask <pertanyaan>` | Konsultasi strategi/psikologi trading dengan AI Mentor.<br>*Contoh:* `/ask bagaimana cara mengatasi FOMO saat scalping?` |

@@ -134,6 +134,9 @@ func (b *BotDispatcher) processMessageSafe(ctx context.Context, msg *clients.Tel
 	case "/start":
 		b.handleStartCommand(ctx, chatIDStr, msg.From.FirstName)
 
+	case "/stop":
+		b.handleStopCommand(ctx, chatIDStr, msg.From.FirstName)
+
 	case "/help":
 		b.handleHelpCommand(ctx, chatIDStr, msg.From.FirstName)
 
@@ -190,6 +193,8 @@ func (b *BotDispatcher) handleHelpCommand(ctx context.Context, chatID, firstName
 		"👋 <b>Selamat Datang di AI Daily Scalping Trading Bot, %s!</b>\n\n"+
 			"Saya adalah Bot Scalping Harian (Intraday) berbasis AI & Senior Trader Engine (15+ Tahun Pengalaman).\n\n"+
 			"📌 <b>Daftar Perintah Telegram Bot:</b>\n"+
+			"• <code>/start</code> - Mengaktifkan mode Auto-Pilot Scalping harian otomatis.\n\n"+
+			"• <code>/stop</code> - Menghentikan berlangganan & notifikasi harian otomatis.\n\n"+
 			"• <code>/scalp &lt;MARKET&gt; &lt;SYMBOL&gt;</code> - Analisis cepat sinyal scalping harian (5M/15M).\n"+
 			"  <i>Contoh:</i> <code>/scalp idx BBCA</code> atau <code>/scalp indodax btc_idr</code>\n\n"+
 			"• <code>/ai &lt;MARKET&gt; &lt;SYMBOL&gt;</code> - Kartu Saran Scalping Harian Terintegrasi AI Provider.\n"+
@@ -223,6 +228,21 @@ func (b *BotDispatcher) handleStartCommand(ctx context.Context, chatID, firstNam
 	go b.runAutoDailyScalpBatch(ctx, chatID)
 }
 
+// handleStopCommand menonaktifkan subscriber dan menghentikan pengiriman sinyal harian otomatis
+func (b *BotDispatcher) handleStopCommand(ctx context.Context, chatID, firstName string) {
+	b.deactivateSubscriber(chatID)
+
+	stopMsg := fmt.Sprintf(
+		"🛑 <b>AUTO-PILOT DAILY SCALPING BOT DIHENTIKAN!</b>\n\n"+
+			"Halo <b>%s</b>! Mode <b>Scalping Harian Otomatis</b> kini telah <b>NONAKTIF</b>.\n\n"+
+			"🔕 Anda tidak akan menerima notifikasi sinyal scalping harian otomatis lagi.\n\n"+
+			"💡 <i>Ketik <code>/start</code> kapan saja jika Anda ingin mengaktifkan kembali bot ini.</i>",
+		firstName,
+	)
+
+	_ = b.telegramClient.SendMessage(ctx, b.botToken, chatID, stopMsg)
+}
+
 // registerSubscriber menyimpan atau memperbarui status subscriber Telegram di database SQLite
 func (b *BotDispatcher) registerSubscriber(chatID, firstName string) {
 	if config.DB != nil {
@@ -239,6 +259,17 @@ func (b *BotDispatcher) registerSubscriber(chatID, firstName string) {
 			if !sub.IsActive {
 				config.DB.Model(&sub).Update("is_active", true)
 			}
+		}
+	}
+}
+
+// deactivateSubscriber mengubah status subscriber menjadi non-aktif (is_active = false) di database SQLite
+func (b *BotDispatcher) deactivateSubscriber(chatID string) {
+	if config.DB != nil {
+		var sub models.BotSubscriber
+		err := config.DB.Where("chat_id = ?", chatID).First(&sub).Error
+		if err == nil && sub.IsActive {
+			config.DB.Model(&sub).Update("is_active", false)
 		}
 	}
 }
