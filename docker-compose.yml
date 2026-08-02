@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  telegram-trading-bot:
+    build: .
+    container_name: telegram_trading_bot
+    restart: always
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - AI_PROVIDER_URL=${AI_PROVIDER_URL:-https://api.openai.com/v1/chat/completions}
+      - AI_API_KEY=${AI_API_KEY}
+      - AI_MODEL=${AI_MODEL:-gpt-4o-mini}
+    volumes:
+      # Persistent volume untuk database SQLite agar data sinyal & cache tidak hilang saat container restart
+      - ./trading_bot.db:/app/trading_bot.db
