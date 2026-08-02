@@ -272,28 +272,18 @@ func (b *BotDispatcher) runAutoDailyScalpBatch(ctx context.Context, chatID strin
 		}
 	} else {
 		// Fallback jika API utama terkendala
-		assets = append(assets,
-			struct {
+		fallbackSymbols := []string{
+			"ADRO", "ANTM", "BIRD", "PADI", "PRDA", "PRDL", "PTBA", "PWON",
+			"BBCA", "BBRI", "BMRI", "BBNI", "TLKM", "ASII", "AMMN", "GOTO",
+			"UNVR", "ICBP", "INDF", "BRPT", "TPIA", "PGAS", "MDKA", "INKP",
+			"MEDC", "CPIN", "KLBF", "UNTR",
+		}
+		for _, sym := range fallbackSymbols {
+			assets = append(assets, struct {
 				Market models.MarketType
 				Symbol string
-			}{Market: models.MarketIDX, Symbol: "BBCA"},
-			struct {
-				Market models.MarketType
-				Symbol string
-			}{Market: models.MarketIDX, Symbol: "BBRI"},
-			struct {
-				Market models.MarketType
-				Symbol string
-			}{Market: models.MarketIDX, Symbol: "BMRI"},
-			struct {
-				Market models.MarketType
-				Symbol string
-			}{Market: models.MarketIDX, Symbol: "TLKM"},
-			struct {
-				Market models.MarketType
-				Symbol string
-			}{Market: models.MarketIDX, Symbol: "ASII"},
-		)
+			}{Market: models.MarketIDX, Symbol: sym})
+		}
 	}
 
 	// 2. Ambil seluruh koin kripto Indodax yang memiliki volume tebal & potensial scalping secara dinamis
