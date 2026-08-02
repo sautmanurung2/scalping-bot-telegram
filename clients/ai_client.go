@@ -35,12 +35,19 @@ func NewAIClient() *AIClient {
 		model = "gpt-4o-mini"
 	}
 
+	timeout := 30 * time.Second
+	if timeoutStr := os.Getenv("AI_TIMEOUT"); timeoutStr != "" {
+		if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil && parsedTimeout > 0 {
+			timeout = parsedTimeout
+		}
+	}
+
 	return &AIClient{
 		baseURL: baseURL,
 		apiKey:  apiKey,
 		model:   model,
 		httpClient: &http.Client{
-			Timeout: 12 * time.Second,
+			Timeout: timeout,
 		},
 	}
 }
