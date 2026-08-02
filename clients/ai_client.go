@@ -27,7 +27,7 @@ type AIClient struct {
 func NewAIClient() *AIClient {
 	baseURL := os.Getenv("AI_PROVIDER_URL")
 	if baseURL == "" {
-		baseURL = "https://api.openai.com/v1/chat/completions"
+		baseURL = "https://ai.kostan.my.id/v1/chat/completions"
 	}
 	apiKey := os.Getenv("AI_API_KEY")
 	model := os.Getenv("AI_MODEL")
