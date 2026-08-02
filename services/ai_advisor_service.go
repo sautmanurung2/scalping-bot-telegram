@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"trading-analysis-bot/clients"
 	"trading-analysis-bot/models"
@@ -70,6 +71,7 @@ func (s *AIAdvisorService) GenerateScalpingAdvice(ctx context.Context, scanRes *
 
 	advice, err := s.aiClient.GenerateCompletion(ctx, seniorScalperSystemPrompt, userPrompt)
 	if err != nil {
+		log.Printf("⚠️ [AI ADVISOR ERROR] Gagal menghasilkan saran AI: %v", err)
 		// Fallback cerdas jika AI API offline atau token belum dikonfigurasi
 		return fmt.Sprintf(
 			"⚡ <b>AI DAILY SCALPING ADVICE (FALLBACK ENGINE): %s (%s)</b>\n"+
@@ -82,12 +84,14 @@ func (s *AIAdvisorService) GenerateScalpingAdvice(ctx context.Context, scanRes *
 				"• Pasang Stop Loss disiplin di level <b>Rp%.2f</b> (Maksimal risiko 1%% modal).\n"+
 				"• Target TP1 di <b>Rp%.2f</b> (+1.2%%) dan TP2 di <b>Rp%.2f</b> (+2.2%%).\n\n"+
 				"⚠️ <b>Peringatan Intraday:</b>\n"+
-				"• <i>No Overnight Rule:</i> Wajib amankan profit/tutup posisi sebelum bursa tutup harian (15:50 WIB).",
+				"• <i>No Overnight Rule:</i> Wajib amankan profit/tutup posisi sebelum bursa tutup harian (15:50 WIB).\n\n"+
+				"📌 <b>Detail Error API AI:</b> <code>%v</code>",
 			scanRes.Symbol, scanRes.Market,
 			scanRes.Recommendation,
 			scanRes.EntryZone.Min, scanRes.EntryZone.Max,
 			scanRes.StopLoss,
 			scanRes.TakeProfit1, scanRes.TakeProfit2,
+			err,
 		), nil
 	}
 
